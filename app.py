@@ -1,11 +1,11 @@
-from flask import Flask
+from flask import Flask, request, jsonify
 import paho.mqtt.client as mqtt
-import requests
 import threading
 
 app = Flask(__name__)
 
-MQTT_BROKER = "ffb81d830b244852851f07010b2d10b7.s1.eu.hivemq.cloud"
+# Configuración de MQTT
+MQTT_BROKER = "ffb81d830b244852851f07010b2d10b7.s1.eu.hivemq.cloud"  # Reemplaza con tu broker HiveMQ
 MQTT_PORT = 8883
 MQTT_USER = "poste1"
 MQTT_PASS = "Trasero123!"
@@ -16,7 +16,31 @@ client_mqtt.tls_set()
 
 @app.route('/')
 def index():
-    return "Caja RORI funcionando"
+    return "✅ Caja RORI activa"
+
+@app.route('/validar_invitacion', methods=['POST'])
+def validar_invitacion():
+    data = request.get_json()
+    codigo = data.get('codigo')
+    print(f"📥 Validando invitación con código: {codigo}")
+
+    # Simulación de validación (puedes reemplazar esto con lógica real o DB)
+    if codigo == "25365534":
+        response = {
+            "valid": True,
+            "anfitrion": "Julio",
+            "id_invitacion": "01_xah"
+        }
+        # Publicar orden de abrir
+        client_mqtt.publish("esp32/abrir", "1")
+        print("🔓 Publicada orden de apertura para el dispositivo")
+    else:
+        response = {
+            "valid": False
+        }
+        print("❌ Código inválido")
+
+    return jsonify(response)
 
 def on_connect(client, userdata, flags, rc):
     print("Conectado al broker con código", rc)
@@ -24,25 +48,9 @@ def on_connect(client, userdata, flags, rc):
 
 def on_message(client, userdata, msg):
     codigo = msg.payload.decode()
-    print(f"📥 Código recibido: {codigo}")
-    validar_en_backend(codigo)
-
-def validar_en_backend(codigo):
-    url = "https://rori-caja.onrender.com/validar_invitacion"
-    data = { "codigo": codigo }
-    try:
-        resp = requests.post(url, json=data)
-        if resp.status_code == 200:
-            result = resp.json()
-            if result.get("valid"):
-                print(f"✅ Acceso permitido. Anfitrión: {result.get('anfitrion')}, ID: {result.get('id_invitacion')}")
-                client_mqtt.publish("esp32/abrir", "1")
-            else:
-                print("❌ Acceso denegado.")
-        else:
-            print("⚠ Error en backend:", resp.status_code)
-    except Exception as e:
-        print("⚠ Error al validar:", e)
+    print(f"📥 Código recibido por MQTT: {codigo}")
+    # Puedes opcionalmente llamar al validador interno
+    # validar_invitacion_backend(codigo)
 
 def mqtt_thread():
     client_mqtt.on_connect = on_connect
@@ -50,8 +58,8 @@ def mqtt_thread():
     client_mqtt.connect(MQTT_BROKER, MQTT_PORT)
     client_mqtt.loop_forever()
 
-# Iniciar MQTT en un hilo
-threading.Thread(target=mqtt_thread).start()
+# Inicia MQTT en un hilo separado
+threading.Thread(target=mqtt_thread, daemon=True).start()
 
 if __name__ == '__main__':
     app.run(host="0.0.0.0", port=5000)
