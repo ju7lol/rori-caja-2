@@ -1,6 +1,8 @@
 from flask import Flask, request, jsonify
 import paho.mqtt.client as mqtt
 import threading
+from flask_cors import CORS
+
 
 app = Flask(__name__)
 
@@ -13,6 +15,9 @@ MQTT_PASS = "Trasero123!"
 client_mqtt = mqtt.Client()
 client_mqtt.username_pw_set(MQTT_USER, MQTT_PASS)
 client_mqtt.tls_set()
+
+CORS(app, origins=["https://ju7lol.github.io"])
+
 
 @app.route('/')
 def index():
