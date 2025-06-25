@@ -1,6 +1,7 @@
 from flask import Flask
 import paho.mqtt.client as mqtt
 import json
+import time
 
 app = Flask(__name__)
 
@@ -43,4 +44,8 @@ client.on_connect = on_connect
 client.on_message = on_message
 client.connect(broker, port, 60)
 
-client.loop_start()
+try:
+    while True:
+        time.sleep(1)
+except KeyboardInterrupt:
+    client.loop_stop()
