@@ -1,17 +1,10 @@
 from flask import Flask, render_template, request, jsonify, redirect, url_for
-import paho.mqtt.publish as publish
 import requests
 
 app = Flask(__name__)
 
-# --- Configuración MQTT (igual que en ESP32 y caja)
-MQTT_BROKER = "ef91b613700d4d89b3bad259f7d88126.s1.eu.hivemq.cloud"
-MQTT_PORT = 8883
-MQTT_USER = "xPostex"
-MQTT_PASSWORD = "Julito123!"
-
-# --- Dirección IP o URL pública de tu caja (ajústala) ---
-CAJA_URL = "https://rori-caja.onrender.com"  # o el dominio en producción
+# --- Dirección pública o local de la caja ---
+CAJA_URL = "https://rori-caja.onrender.com"  # o "http://localhost:5000" si pruebas local
 
 # --- Base de datos simulada
 estancias = {
@@ -51,7 +44,7 @@ estados_dispositivos = {
     }
 }
 
-# --- Registro de accesos
+# --- Registro de accesos (memoria)
 registros_acceso = {
     "ahdo": [],
     "estancia2": []
@@ -91,7 +84,6 @@ def ver_dispositivos(estancia_id):
     estados = estados_dispositivos.get(estancia_id, {})
     return render_template("dispositivos.html", estancia=estancia, estancia_id=estancia_id, estados=estados)
 
-# --- Nuevo: controlar estado del dispositivo (abrir/cerrar)
 @app.route('/estancia/<estancia_id>/dispositivos/<dispositivo_id>/<accion>', methods=["POST"])
 def controlar_rele(estancia_id, dispositivo_id, accion):
     if estancia_id not in estancias or dispositivo_id not in estancias[estancia_id]["dispositivos"]:
@@ -109,7 +101,6 @@ def controlar_rele(estancia_id, dispositivo_id, accion):
         })
 
         if respuesta.status_code == 200:
-            # Solo actualizamos el estado si la caja respondió bien
             estados_dispositivos[estancia_id][dispositivo_id] = "abierto" if accion == "abrir" else "cerrado"
             return "", 204
         else:
@@ -118,7 +109,6 @@ def controlar_rele(estancia_id, dispositivo_id, accion):
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-# --- Validación de códigos
 @app.route("/validar-codigo", methods=["POST"])
 def validar_codigo():
     data = request.json
