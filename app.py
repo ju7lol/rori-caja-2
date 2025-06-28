@@ -2,15 +2,7 @@ from flask import Flask, render_template, request, jsonify, redirect, url_for
 
 app = Flask(__name__)
 
-# Registros de accesos exitosos (en memoria)
-# Accesos por estancia
-registros_acceso = {
-    "ahdo": [],
-    "estancia2": []
-}
-
-
-# Datos simulados
+# Base de datos simulada
 estancias = {
     "ahdo": {
         "nombre": "Residencial Alcazar",
@@ -36,21 +28,45 @@ estancias = {
     }
 }
 
+# Registro de accesos en memoria
+registros_acceso = {
+    "ahdo": [],
+    "estancia2": []
+}
 
 @app.route('/')
 def index():
     return render_template("estancias.html", estancias=estancias)
 
+@app.route('/estancia/<estancia_id>/menu')
+def menu_estancia(estancia_id):
+    estancia = estancias.get(estancia_id)
+    if not estancia:
+        return "Estancia no encontrada", 404
+    return render_template("menu_estancia.html", estancia_id=estancia_id, estancia=estancia)
 
-@app.route('/estancia/<estancia_id>')
+@app.route('/estancia/<estancia_id>/invitaciones')
 def ver_invitaciones(estancia_id):
     estancia = estancias.get(estancia_id)
     if not estancia:
         return "Estancia no encontrada", 404
-    return render_template("invitaciones.html", estancia_id=estancia_id, estancia=estancia)
+    return render_template("invitaciones.html", estancia=estancia, estancia_id=estancia_id)
 
+@app.route('/estancia/<estancia_id>/registros')
+def ver_registros(estancia_id):
+    estancia = estancias.get(estancia_id)
+    if not estancia:
+        return "Estancia no encontrada", 404
+    registros = registros_acceso.get(estancia_id, [])
+    return render_template("registros.html", registros=registros, estancia=estancia, estancia_id=estancia_id)
 
-# Ruta para validar códigos desde la caja
+@app.route('/estancia/<estancia_id>/dispositivos')
+def ver_dispositivos(estancia_id):
+    estancia = estancias.get(estancia_id)
+    if not estancia:
+        return "Estancia no encontrada", 404
+    return render_template("dispositivos.html", estancia=estancia, estancia_id=estancia_id)
+
 @app.route("/validar-codigo", methods=["POST"])
 def validar_codigo():
     data = request.json
@@ -70,28 +86,13 @@ def validar_codigo():
         for inv in estancia["invitaciones"]
     )
 
-    if invitacion_valida:
-        registros_acceso.setdefault(estancia_id, []).append({
-            "codigo": codigo,
-            "dispositivo_id": dispositivo_id,
-            "mensaje": "Dispositivo activado"
-        })
+    # Agregar a registros (solo en memoria)
+    registros_acceso.setdefault(estancia_id, []).append({
+        "mensaje": "Dispositivo activado" if invitacion_valida else "Intento fallido",
+        "codigo": codigo
+    })
 
     return jsonify({"success": invitacion_valida}), 200
-
-@app.route('/registros')
-def ver_registros():
-    return render_template("registros.html", registros=registros_acceso)
-
-@app.route('/estancia/<estancia_id>/registros')
-def ver_registros_estancia(estancia_id):
-    estancia = estancias.get(estancia_id)
-    if not estancia:
-        return "Estancia no encontrada", 404
-    registros = registros_acceso.get(estancia_id, [])
-    return render_template("registros_estancia.html", estancia_id=estancia_id, estancia=estancia, registros=registros)
-
-
 
 if __name__ == '__main__':
     app.run(debug=True, host="0.0.0.0", port=5000)

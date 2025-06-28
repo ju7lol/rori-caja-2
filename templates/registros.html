@@ -1,28 +1,21 @@
 <!DOCTYPE html>
-<html lang="es">
+<html>
 <head>
-    <meta charset="UTF-8">
     <title>Registros de Acceso</title>
 </head>
 <body>
-    <h1>Registros de Acceso</h1>
-    <table border="1" cellpadding="8">
-        <thead>
+    <h1>Registros de Acceso - {{ estancia.nombre }}</h1>
+    <table border="1">
+        <tr>
+            <th>Mensaje</th>
+            <th>Código</th>
+        </tr>
+        {% for registro in registros %}
             <tr>
-                <th>Dispositivo</th>
-                <th>Código usado</th>
+                <td>{{ registro.mensaje }}</td>
+                <td>{{ registro.codigo }}</td>
             </tr>
-        </thead>
-        <tbody>
-            {% for registro in registros %}
-                <tr>
-                    <td>{{ registro.dispositivo_nombre }}</td>
-                    <td>{{ registro.codigo }}</td>
-                </tr>
-            {% endfor %}
-        </tbody>
+        {% endfor %}
     </table>
-    <br>
-    <a href="/">Volver al inicio</a>
 </body>
 </html>
