@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Invitaciones</title>
+</head>
+<body>
+    <h1>Invitaciones de {{ estancia.nombre }}</h1>
+
+    <a href="{{ url_for('ver_registros_estancia', estancia_id=estancia_id) }}">
+        <button style="padding: 8px 16px;">Ver registros de acceso</button>
+    </a>
+    <br><br>
+
+    <table border="1">
+        <tr>
+            <th>Código</th>
+            <th>Nombre del Dispositivo</th>
+            <th>ID del Dispositivo</th>
+        </tr>
+        {% for invitacion in estancia.invitaciones %}
+        <tr>
+            <td>{{ invitacion.codigo }}</td>
+            <td>{{ estancia.dispositivos[invitacion.dispositivo_id] }}</td>
+            <td>{{ invitacion.dispositivo_id }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+
+    <p><a href="{{ url_for('index') }}">← Volver a Estancias</a></p>
+</body>
+</html>

@@ -1,65 +1,97 @@
-import paho.mqtt.client as mqtt
-import json
-import time
-import requests  # para hacer el POST al simulador
+from flask import Flask, render_template, request, jsonify, redirect, url_for
 
-# --- CONFIGURACIÓN ---
-broker = "ef91b613700d4d89b3bad259f7d88126.s1.eu.hivemq.cloud"
-port = 8883
-user = "xPostex"
-password = "Julito123!"
-topic_base = "rori/ahdo/dispositivos/esp32-principal"
+app = Flask(__name__)
 
-# URL del simulador
-simulador_url = "http://192.168.10.250:5000/validar-codigo"  # Cambia la IP según sea necesario
+# Registros de accesos exitosos (en memoria)
+# Accesos por estancia
+registros_acceso = {
+    "ahdo": [],
+    "estancia2": []
+}
 
-# --- Conexión y manejo MQTT ---
-def on_connect(client, userdata, flags, rc):
-    print("🟢 Conectado al broker:", rc)
-    client.subscribe(f"{topic_base}/estado")
 
-def on_message(client, userdata, msg):
-    print(f"📩 [{msg.topic}] {msg.payload.decode()}")
-    try:
-        data = json.loads(msg.payload.decode())
-        codigo = data.get("codigo")
+# Datos simulados
+estancias = {
+    "ahdo": {
+        "nombre": "Residencial Alcazar",
+        "dispositivos": {
+            "esp32-principal": "Portón principal",
+            "esp32-secundario": "Puerta peatonal"
+        },
+        "invitaciones": [
+            {"codigo": "123456", "dispositivo_id": "esp32-principal"},
+            {"codigo": "654321", "dispositivo_id": "esp32-secundario"}
+        ]
+    },
+    "estancia2": {
+        "nombre": "Colegio Central",
+        "dispositivos": {
+            "dispositivo1": "Acceso frontal",
+            "dispositivo2": "Acceso trasero"
+        },
+        "invitaciones": [
+            {"codigo": "112233", "dispositivo_id": "dispositivo1"},
+            {"codigo": "445566", "dispositivo_id": "dispositivo2"}
+        ]
+    }
+}
 
-        # Datos para enviar al simulador
-        payload = {
+
+@app.route('/')
+def index():
+    return render_template("estancias.html", estancias=estancias)
+
+
+@app.route('/estancia/<estancia_id>')
+def ver_invitaciones(estancia_id):
+    estancia = estancias.get(estancia_id)
+    if not estancia:
+        return "Estancia no encontrada", 404
+    return render_template("invitaciones.html", estancia_id=estancia_id, estancia=estancia)
+
+
+# Ruta para validar códigos desde la caja
+@app.route("/validar-codigo", methods=["POST"])
+def validar_codigo():
+    data = request.json
+    estancia_id = data.get("real_estate_uuid")
+    dispositivo_id = data.get("device_uuid")
+    codigo = data.get("codigo")
+
+    if not (estancia_id and dispositivo_id and codigo):
+        return jsonify({"success": False, "message": "Datos incompletos"}), 400
+
+    estancia = estancias.get(estancia_id)
+    if not estancia:
+        return jsonify({"success": False, "message": "Estancia no encontrada"}), 404
+
+    invitacion_valida = any(
+        inv["codigo"] == codigo and inv["dispositivo_id"] == dispositivo_id
+        for inv in estancia["invitaciones"]
+    )
+
+    if invitacion_valida:
+        registros_acceso.setdefault(estancia_id, []).append({
             "codigo": codigo,
-            "real_estate_uuid": "estancia1",  # ← cambia si es necesario
-            "device_uuid": "dispositivo1"     # ← cambia si es necesario
-        }
+            "dispositivo_id": dispositivo_id,
+            "mensaje": "Dispositivo activado"
+        })
 
-        # Petición al simulador
-        respuesta = requests.post(simulador_url, json=payload)
-        resultado = respuesta.json()
+    return jsonify({"success": invitacion_valida}), 200
 
-        if resultado.get("valido"):
-            print("✅ Código válido desde el simulador.")
-            client.publish(f"{topic_base}/status", json.dumps({"validacion": "valido"}))
-            client.publish(f"{topic_base}/abrir", "abrir")
-        else:
-            print("⛔ Código inválido según simulador.")
-            client.publish(f"{topic_base}/status", json.dumps({"validacion": "invalido"}))
+@app.route('/registros')
+def ver_registros():
+    return render_template("registros.html", registros=registros_acceso)
 
-    except Exception as e:
-        print("❌ Error procesando mensaje:", e)
+@app.route('/estancia/<estancia_id>/registros')
+def ver_registros_estancia(estancia_id):
+    estancia = estancias.get(estancia_id)
+    if not estancia:
+        return "Estancia no encontrada", 404
+    registros = registros_acceso.get(estancia_id, [])
+    return render_template("registros_estancia.html", estancia_id=estancia_id, estancia=estancia, registros=registros)
 
-# --- Cliente MQTT ---
-client = mqtt.Client()
-client.username_pw_set(user, password)
-client.tls_set()
-client.on_connect = on_connect
-client.on_message = on_message
 
-client.connect(broker, port, 60)
-client.loop_start()
 
-# --- Mantener vivo ---
-try:
-    while True:
-        time.sleep(1)
-except KeyboardInterrupt:
-    print("🔴 Detenido por el usuario")
-    client.loop_stop()
+if __name__ == '__main__':
+    app.run(debug=True, host="0.0.0.0", port=5000)

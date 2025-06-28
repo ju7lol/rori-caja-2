@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Registros de Acceso</title>
+</head>
+<body>
+    <h1>Registros de Acceso</h1>
+    <table border="1" cellpadding="8">
+        <thead>
+            <tr>
+                <th>Dispositivo</th>
+                <th>Código usado</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for registro in registros %}
+                <tr>
+                    <td>{{ registro.dispositivo_nombre }}</td>
+                    <td>{{ registro.codigo }}</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    <br>
+    <a href="/">Volver al inicio</a>
+</body>
+</html>
