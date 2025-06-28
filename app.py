@@ -1,5 +1,6 @@
 from flask import Flask, render_template, request, jsonify, redirect, url_for
 import paho.mqtt.publish as publish
+import requests
 
 app = Flask(__name__)
 
@@ -8,6 +9,9 @@ MQTT_BROKER = "ef91b613700d4d89b3bad259f7d88126.s1.eu.hivemq.cloud"
 MQTT_PORT = 8883
 MQTT_USER = "xPostex"
 MQTT_PASSWORD = "Julito123!"
+
+# --- Dirección IP o URL pública de tu caja (ajústala) ---
+CAJA_URL = "https://rori-caja.onrender.com"  # o el dominio en producción
 
 # --- Base de datos simulada
 estancias = {
@@ -96,23 +100,23 @@ def controlar_rele(estancia_id, dispositivo_id, accion):
     if accion not in ["abrir", "cerrar"]:
         return "Acción inválida", 400
 
-    # ✅ CAMBIADO: publicamos al topic /control
-    topic = f"rori/{estancia_id}/dispositivos/{dispositivo_id}/control"
-
     try:
-        publish.single(
-            topic,
-            accion,
-            hostname=MQTT_BROKER,
-            port=MQTT_PORT,
-            auth={"username": MQTT_USER, "password": MQTT_PASSWORD},
-            tls={"cert_reqs": 0}
-        )
-        estados_dispositivos[estancia_id][dispositivo_id] = "abierto" if accion == "abrir" else "cerrado"
-        return "", 204
+        # Petición a la caja
+        respuesta = requests.post(f"{CAJA_URL}/abrir-dispositivo", json={
+            "real_estate_uuid": estancia_id,
+            "device_uuid": dispositivo_id,
+            "accion": accion
+        })
+
+        if respuesta.status_code == 200:
+            # Solo actualizamos el estado si la caja respondió bien
+            estados_dispositivos[estancia_id][dispositivo_id] = "abierto" if accion == "abrir" else "cerrado"
+            return "", 204
+        else:
+            return jsonify({"error": "Caja respondió con error", "detalle": respuesta.text}), 500
+
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
 
 # --- Validación de códigos
 @app.route("/validar-codigo", methods=["POST"])
