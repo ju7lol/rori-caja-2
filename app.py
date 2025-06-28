@@ -96,8 +96,9 @@ def controlar_rele(estancia_id, dispositivo_id, accion):
     if accion not in ["abrir", "cerrar"]:
         return "Acción inválida", 400
 
-    # Publicar comando MQTT
-    topic = f"rori/{estancia_id}/dispositivos/{dispositivo_id}/abrir"
+    # ✅ CAMBIADO: publicamos al topic /control
+    topic = f"rori/{estancia_id}/dispositivos/{dispositivo_id}/control"
+
     try:
         publish.single(
             topic,
@@ -111,6 +112,7 @@ def controlar_rele(estancia_id, dispositivo_id, accion):
         return "", 204
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
 
 # --- Validación de códigos
 @app.route("/validar-codigo", methods=["POST"])
