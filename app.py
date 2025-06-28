@@ -1,4 +1,5 @@
 from flask import Flask, render_template, request, jsonify, redirect, url_for
+import paho.mqtt.publish as publish
 
 app = Flask(__name__)
 
@@ -93,6 +94,26 @@ def validar_codigo():
     })
 
     return jsonify({"success": invitacion_valida}), 200
+
+@app.route('/estancia/<estancia_id>/dispositivo/<dispositivo_id>/control', methods=["POST"])
+def controlar_dispositivo(estancia_id, dispositivo_id):
+    accion = request.form.get("accion")
+    if accion not in ["abrir", "cerrar"]:
+        return "Acción inválida", 400
+
+    topic = f"rori/{estancia_id}/dispositivos/{dispositivo_id}/control_remoto"
+    try:
+        publish.single(
+            topic,
+            payload=accion,
+            hostname="ef91b613700d4d89b3bad259f7d88126.s1.eu.hivemq.cloud",
+            port=8883,
+            auth={"username": "xPostex", "password": "Julito123!"},
+            tls={"cert_reqs": 0}  # Desactiva validación estricta (ok para pruebas)
+        )
+        return redirect(url_for("ver_dispositivos", estancia_id=estancia_id))
+    except Exception as e:
+        return f"Error al publicar: {str(e)}", 500
 
 if __name__ == '__main__':
     app.run(debug=True, host="0.0.0.0", port=5000)

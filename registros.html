@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Registros de Acceso</title>
+</head>
+<body>
+    <h1>Registros de Acceso - {{ estancia.nombre }}</h1>
+    <table border="1">
+        <tr>
+            <th>Mensaje</th>
+            <th>Código</th>
+        </tr>
+        {% for registro in registros %}
+            <tr>
+                <td>{{ registro.mensaje }}</td>
+                <td>{{ registro.codigo }}</td>
+            </tr>
+        {% endfor %}
+    </table>
+</body>
+</html>

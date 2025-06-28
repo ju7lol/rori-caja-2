@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Invitaciones</title>
+</head>
+<body>
+    <h1>Invitaciones - {{ estancia.nombre }}</h1>
+    <table border="1">
+        <tr>
+            <th>Código</th>
+            <th>Dispositivo</th>
+            <th>ID del Dispositivo</th>
+        </tr>
+        {% for inv in estancia.invitaciones %}
+            <tr>
+                <td>{{ inv.codigo }}</td>
+                <td>{{ estancia.dispositivos[inv.dispositivo_id] }}</td>
+                <td>{{ inv.dispositivo_id }}</td>
+            </tr>
+        {% endfor %}
+    </table>
+</body>
+</html>

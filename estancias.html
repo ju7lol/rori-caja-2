@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Estancias</title>
+</head>
+<body>
+    <h1>Lista de Estancias</h1>
+    <ul>
+        {% for id, estancia in estancias.items() %}
+            <li>
+                <a href="{{ url_for('menu_estancia', estancia_id=id) }}">{{ estancia.nombre }}</a>
+            </li>
+        {% endfor %}
+    </ul>
+</body>
+</html>
