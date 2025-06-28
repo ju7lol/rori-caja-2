@@ -1,34 +1,40 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Dispositivos - {{ estancia.nombre }}</title>
+    <title>Dispositivos</title>
+    <script>
+        async function controlarDispositivo(estanciaId, dispositivoId, accion) {
+            const response = await fetch(`/estancia/${estanciaId}/dispositivos/${dispositivoId}/${accion}`, {
+                method: 'POST'
+            });
+            if (response.ok) {
+                location.reload();  // Recarga la página para ver el estado actualizado
+            } else {
+                alert("Error al enviar la acción");
+            }
+        }
+    </script>
 </head>
 <body>
-    <h1>Dispositivos de {{ estancia.nombre }}</h1>
+    <h1>Dispositivos - {{ estancia.nombre }}</h1>
     <table border="1">
         <tr>
-            <th>ID Dispositivo</th>
+            <th>ID del Dispositivo</th>
             <th>Nombre</th>
-            <th>Controles</th>
+            <th>Estado</th>
+            <th>Acciones</th>
         </tr>
         {% for id, nombre in estancia.dispositivos.items() %}
-        <tr>
-            <td>{{ id }}</td>
-            <td>{{ nombre }}</td>
-            <td>
-                <form action="{{ url_for('controlar_dispositivo', estancia_id=estancia_id, dispositivo_id=id) }}" method="post" style="display:inline;">
-                    <input type="hidden" name="accion" value="abrir">
-                    <button type="submit">🔓 Abrir</button>
-                </form>
-                <form action="{{ url_for('controlar_dispositivo', estancia_id=estancia_id, dispositivo_id=id) }}" method="post" style="display:inline;">
-                    <input type="hidden" name="accion" value="cerrar">
-                    <button type="submit">🔒 Cerrar</button>
-                </form>
-            </td>
-        </tr>
+            <tr>
+                <td>{{ id }}</td>
+                <td>{{ nombre }}</td>
+                <td>{{ estados.get(id, "desconocido") }}</td>
+                <td>
+                    <button onclick="controlarDispositivo('{{ estancia_id }}', '{{ id }}', 'abrir')">Abrir</button>
+                    <button onclick="controlarDispositivo('{{ estancia_id }}', '{{ id }}', 'cerrar')">Cerrar</button>
+                </td>
+            </tr>
         {% endfor %}
     </table>
-    <br>
-    <a href="{{ url_for('menu_estancia', estancia_id=estancia_id) }}">⬅ Volver al menú</a>
 </body>
 </html>

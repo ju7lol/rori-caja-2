@@ -3,7 +3,13 @@ import paho.mqtt.publish as publish
 
 app = Flask(__name__)
 
-# Base de datos simulada
+# --- Configuración MQTT (igual que en ESP32 y caja)
+MQTT_BROKER = "ef91b613700d4d89b3bad259f7d88126.s1.eu.hivemq.cloud"
+MQTT_PORT = 8883
+MQTT_USER = "xPostex"
+MQTT_PASSWORD = "Julito123!"
+
+# --- Base de datos simulada
 estancias = {
     "ahdo": {
         "nombre": "Residencial Alcazar",
@@ -29,7 +35,19 @@ estancias = {
     }
 }
 
-# Registro de accesos en memoria
+# --- Estado actual de los dispositivos (solo memoria)
+estados_dispositivos = {
+    "ahdo": {
+        "esp32-principal": "cerrado",
+        "esp32-secundario": "cerrado"
+    },
+    "estancia2": {
+        "dispositivo1": "cerrado",
+        "dispositivo2": "cerrado"
+    }
+}
+
+# --- Registro de accesos
 registros_acceso = {
     "ahdo": [],
     "estancia2": []
@@ -66,8 +84,35 @@ def ver_dispositivos(estancia_id):
     estancia = estancias.get(estancia_id)
     if not estancia:
         return "Estancia no encontrada", 404
-    return render_template("dispositivos.html", estancia=estancia, estancia_id=estancia_id)
+    estados = estados_dispositivos.get(estancia_id, {})
+    return render_template("dispositivos.html", estancia=estancia, estancia_id=estancia_id, estados=estados)
 
+# --- Nuevo: controlar estado del dispositivo (abrir/cerrar)
+@app.route('/estancia/<estancia_id>/dispositivos/<dispositivo_id>/<accion>', methods=["POST"])
+def controlar_rele(estancia_id, dispositivo_id, accion):
+    if estancia_id not in estancias or dispositivo_id not in estancias[estancia_id]["dispositivos"]:
+        return "Dispositivo o estancia inválido", 404
+
+    if accion not in ["abrir", "cerrar"]:
+        return "Acción inválida", 400
+
+    # Publicar comando MQTT
+    topic = f"rori/{estancia_id}/dispositivos/{dispositivo_id}/abrir"
+    try:
+        publish.single(
+            topic,
+            accion,
+            hostname=MQTT_BROKER,
+            port=MQTT_PORT,
+            auth={"username": MQTT_USER, "password": MQTT_PASSWORD},
+            tls={"cert_reqs": 0}
+        )
+        estados_dispositivos[estancia_id][dispositivo_id] = "abierto" if accion == "abrir" else "cerrado"
+        return "", 204
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+# --- Validación de códigos
 @app.route("/validar-codigo", methods=["POST"])
 def validar_codigo():
     data = request.json
@@ -87,33 +132,12 @@ def validar_codigo():
         for inv in estancia["invitaciones"]
     )
 
-    # Agregar a registros (solo en memoria)
     registros_acceso.setdefault(estancia_id, []).append({
         "mensaje": "Dispositivo activado" if invitacion_valida else "Intento fallido",
         "codigo": codigo
     })
 
     return jsonify({"success": invitacion_valida}), 200
-
-@app.route('/estancia/<estancia_id>/dispositivo/<dispositivo_id>/control', methods=["POST"])
-def controlar_dispositivo(estancia_id, dispositivo_id):
-    accion = request.form.get("accion")
-    if accion not in ["abrir", "cerrar"]:
-        return "Acción inválida", 400
-
-    topic = f"rori/{estancia_id}/dispositivos/{dispositivo_id}/control_remoto"
-    try:
-        publish.single(
-            topic,
-            payload=accion,
-            hostname="ef91b613700d4d89b3bad259f7d88126.s1.eu.hivemq.cloud",
-            port=8883,
-            auth={"username": "xPostex", "password": "Julito123!"},
-            tls={"cert_reqs": 0}  # Desactiva validación estricta (ok para pruebas)
-        )
-        return redirect(url_for("ver_dispositivos", estancia_id=estancia_id))
-    except Exception as e:
-        return f"Error al publicar: {str(e)}", 500
 
 if __name__ == '__main__':
     app.run(debug=True, host="0.0.0.0", port=5000)
