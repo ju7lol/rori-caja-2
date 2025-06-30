@@ -181,6 +181,31 @@ def validar_codigo_web(estancia_id):
 
     return render_template("validar_codigo.html", estancia=estancia, estancia_id=estancia_id, resultado=resultado)
 
+# --- NFC ---
+@app.route('/nfc/abrir', methods=["GET"])
+def nfc_abrir_get():
+    estancia_id = request.args.get("estancia_id")
+    dispositivo_id = request.args.get("dispositivo_id")
+
+    if not (estancia_id and dispositivo_id):
+        return "Datos incompletos", 400
+
+    if estancia_id not in estancias or dispositivo_id not in estancias[estancia_id]["dispositivos"]:
+        return "Estancia o dispositivo inválido", 400
+
+    topic = f"rori/{estancia_id}/dispositivos/{dispositivo_id}/abrir"
+    try:
+        publish.single(
+            topic,
+            "abrir",
+            hostname=MQTT_BROKER,
+            port=MQTT_PORT,
+            auth={"username": MQTT_USER, "password": MQTT_PASSWORD},
+            tls={"cert_reqs": 0}
+        )
+        return f"✅ Dispositivo {dispositivo_id} abierto en {estancia_id}"
+    except Exception as e:
+        return f"❌ Error: {str(e)}", 500
 
 if __name__ == '__main__':
     app.run(debug=True, host="0.0.0.0", port=5000)
