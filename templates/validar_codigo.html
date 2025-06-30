@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Validar Invitación</title>
+</head>
+<body>
+    <h1>Validar Código de Invitación - {{ estancia.nombre }}</h1>
+
+    <form method="POST" action="{{ url_for('validar_codigo_web', estancia_id=estancia_id) }}">
+        <label for="codigo">Código de invitación:</label>
+        <input type="text" name="codigo" id="codigo" required>
+
+        <label for="dispositivo_id">Dispositivo:</label>
+        <select name="dispositivo_id" id="dispositivo_id">
+            {% for id, nombre in estancia.dispositivos.items() %}
+                <option value="{{ id }}">{{ nombre }}</option>
+            {% endfor %}
+        </select>
+
+        <button type="submit">Validar y Abrir</button>
+    </form>
+
+    {% if resultado is defined %}
+        <p>{{ resultado }}</p>
+    {% endif %}
+</body>
+</html>
