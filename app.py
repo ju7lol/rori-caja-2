@@ -138,5 +138,50 @@ def validar_codigo():
 
     return jsonify({"success": invitacion_valida}), 200
 
+# --- Modo manual ---
+@app.route('/estancia/<estancia_id>/validar', methods=["GET", "POST"])
+def validar_codigo_web(estancia_id):
+    estancia = estancias.get(estancia_id)
+    if not estancia:
+        return "Estancia no encontrada", 404
+
+    resultado = None
+
+    if request.method == "POST":
+        codigo = request.form.get("codigo")
+        dispositivo_id = request.form.get("dispositivo_id")
+
+        invitacion_valida = any(
+            inv["codigo"] == codigo and inv["dispositivo_id"] == dispositivo_id
+            for inv in estancia["invitaciones"]
+        )
+
+        registros_acceso.setdefault(estancia_id, []).append({
+            "mensaje": "Dispositivo activado (web)" if invitacion_valida else "Intento fallido (web)",
+            "codigo": codigo
+        })
+
+        if invitacion_valida:
+            topic = f"rori/{estancia_id}/dispositivos/{dispositivo_id}/control_remoto"
+            try:
+                publish.single(
+                    topic,
+                    "abrir",
+                    hostname=MQTT_BROKER,
+                    port=MQTT_PORT,
+                    auth={"username": MQTT_USER, "password": MQTT_PASSWORD},
+                    tls={"cert_reqs": 0}
+                )
+                estados_dispositivos[estancia_id][dispositivo_id] = "abierto"
+            except Exception as e:
+                resultado = f"Error al abrir el dispositivo: {str(e)}"
+            else:
+                resultado = "✅ Código válido. Dispositivo abierto."
+        else:
+            resultado = "❌ Código inválido."
+
+    return render_template("validar_codigo.html", estancia=estancia, estancia_id=estancia_id, resultado=resultado)
+
+
 if __name__ == '__main__':
     app.run(debug=True, host="0.0.0.0", port=5000)
