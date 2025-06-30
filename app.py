@@ -162,7 +162,7 @@ def validar_codigo_web(estancia_id):
         })
 
         if invitacion_valida:
-            topic = f"rori/{estancia_id}/dispositivos/{dispositivo_id}/control_remoto"
+            topic = f"rori/{estancia_id}/dispositivos/{dispositivo_id}/abrir"
             try:
                 publish.single(
                     topic,
@@ -172,7 +172,6 @@ def validar_codigo_web(estancia_id):
                     auth={"username": MQTT_USER, "password": MQTT_PASSWORD},
                     tls={"cert_reqs": 0}
                 )
-                estados_dispositivos[estancia_id][dispositivo_id] = "abierto"
             except Exception as e:
                 resultado = f"Error al abrir el dispositivo: {str(e)}"
             else:
